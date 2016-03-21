@@ -1,0 +1,26 @@
+{
+  "name": "paperjs",
+  "description": "",
+  "main": "index.js",
+  "authors": [
+    "Sebastian Schaum <hello@schaumiii.de>"
+  ],
+  "license": "ISC",
+  "moduleType": [],
+  "homepage": "",
+  "private": true,
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "foundation-apps": "^1.2.0",
+    "angular-moment": "^0.10.3",
+    "paper": "^0.9.25",
+    "lodash": "^4.6.1",
+    "font-awesome": "^4.5.0"
+  }
+}
