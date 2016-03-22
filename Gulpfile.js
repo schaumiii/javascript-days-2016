@@ -6,8 +6,8 @@ var del = require('del');
 var path = require('path');
 var bundle = require('gulp-bundle-assets');
 var run = require('run-sequence');
-var historyApiFallback = require('connect-history-api-fallback');
-var parseUrl = require('parseurl');
+var http = require('http');
+var serveStatic = require('serve-static');
 var send = require('send');
 
 var $$ = gulpLoadPlugins({});
@@ -22,6 +22,7 @@ paths.dir = {
 
 paths.files = {
   html: './*.html',
+  images: './*.png',
   js: 'src/*.js',
   css: paths.dir.css + '/*.css',
   fonts: paths.dir.vendor + '/font-awesome/fonts/*.{eot,svg,ttf,woff,woff2}'
@@ -36,35 +37,6 @@ function chokidarWatch(glob, fn) {
   });
 }
 
-function createAssetsMiddleware(assetDirectory) {
-  return function (req, res, next) {
-    if (!req.url.match(/^\/ui(\/|$)/)) {
-      next();
-    }
-
-    var originalUrl = parseUrl.original(req);
-    var pathname = parseUrl(req).pathname;
-    var path = pathname.replace(/\/ui\//, '/');
-    if (path === '/' && originalUrl.pathname.substr(-1) !== '/') {
-      path = '';
-    }
-
-    var stream = send(req, path, {
-      root: assetDirectory
-    });
-
-    stream.on('error', function(error) {
-      if (error.code !== 'ENOENT') {
-        return next(error);
-      }
-
-      return next();
-    });
-
-    stream.pipe(res);
-  };
-}
-
 gulp.task('clean', function() {
   return del([
     paths.dir.dist + '/**/*'
@@ -74,13 +46,12 @@ gulp.task('clean', function() {
 gulp.task('connect', function() {
   $$.connect.server(
     {
-      root: [__dirname],
-      port: 54322,
+      root: [paths.dir.dist],
+      port: 3000,
       livereload: true,
       middleware:  function() {
         return [
-          createAssetsMiddleware(process.cwd() + '/' + paths.dir.dist),
-          historyApiFallback()
+          serveStatic(paths.dir.dist, {index: ['index.html']})
         ];
       }
     }
@@ -90,6 +61,24 @@ gulp.task('connect', function() {
 gulp.task('html', function () {
   return gulp.src(paths.files.html)
     .pipe($$.connect.reload());
+});
+
+gulp.task('build-html', function () {
+  return gulp.src(paths.files.html)
+    .pipe($$.rename(function(filePath) {
+      filePath.dirname = path.basename(filePath.dirname);
+      return filePath;
+    }))
+    .pipe(gulp.dest(paths.dir.dist));
+});
+
+gulp.task('build-assets', function () {
+  return gulp.src(paths.files.images)
+    .pipe($$.rename(function(filePath) {
+      filePath.dirname = path.basename(filePath.dirname);
+      return filePath;
+    }))
+    .pipe(gulp.dest(paths.dir.dist + '/images'));
 });
 
 gulp.task('build-fonts', function() {
@@ -103,7 +92,7 @@ gulp.task('build-fonts', function() {
 
 gulp.task('watch', function () {
   chokidarWatch(paths.files.html, function() {
-    run('html');
+    run('build-html', 'html');
   });
 
   chokidarWatch(paths.files.js, function() {
@@ -127,7 +116,7 @@ gulp.task('build-vendor-js', function() {
 
 
 gulp.task('build', function(done) {
-  run(['build-js', 'build-vendor-js', 'build-fonts'], done);
+  run(['build-js', 'build-vendor-js', 'build-fonts', 'build-html', 'build-assets'], done);
 });
 
 gulp.task('serve', function(done) {
